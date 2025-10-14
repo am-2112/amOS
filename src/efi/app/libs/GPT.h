@@ -14,6 +14,11 @@ INTERFACE_DECL(_FREE_BLOCK_IO_NODE);
 INTERFACE_DECL(_GPT_HEADER);
 INTERFACE_DECL(_GPT_DISK);
 
+enum GPT_TABLE {
+	GPT_TABLE_PRIMARY = 0,
+	GPT_TABLE_ALTERNATE
+};
+
 typedef struct {
 	EFI_HANDLE handle;
 	EFI_BLOCK_IO_PROTOCOL* device; //if this is nullptr, then the node is empty and should be ignored
@@ -55,7 +60,8 @@ typedef struct _GPT_DISK {
 	struct _GPT_PARTITION_ENTRY* entries; //entry count defined in hdr->NumberOfPartitionEntries
 } GPT_DISK;
 
-static EFI_GUID EFI_PARTITION_INFO_PROTOCOL_GUID = {.Data1 = 0x8cf2f62c, .Data2 = 0xbc9b, .Data3 = 0x4821, .Data4 = {0x80, 0x8d, 0xec, 0x9e, 0xc4, 0x21, 0xa1, 0xa0}};
+static EFI_GUID EFI_PARTITION_INFO_PROTOCOL_GUID = { .Data1 = 0x8cf2f62c, .Data2 = 0xbc9b, .Data3 = 0x4821, .Data4 = {0x80, 0x8d, 0xec, 0x9e, 0xc4, 0x21, 0xa1, 0xa0} };
+static EFI_GUID EMPTY_GUID = { .Data1 = 0x00000000, .Data2 = 0x0000, .Data3 = 0x0000, .Data4 = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00} };
 #define PARTITION_TYPE_OTHER 0x00 
 #define PARTITION_TYPE_MBR 0x01 
 #define PARTITION_TYPE_GPT 0x02 
@@ -100,6 +106,11 @@ extern void InitialiseBlockDeviceList(EFI_HANDLE ImageHandle);
 extern void AddToBlockList(EFI_HANDLE ImageHandle, EFI_HANDLE deviceHandle);
 extern void RemoveFromBlockList(EFI_HANDLE ImageHandle, BLOCK_IO_NODE* device);
 extern GPT_DISK* ValidateGPTHeader(EFI_BLOCK_IO_PROTOCOL* device);
+
+extern FREE_BLOCK_IO_NODE* freeNode;
+extern BLOCK_IO_NODE* blockDevices;
+extern UINTN blockAmount; /*current*/
+extern UINTN maxBlockAmount; /*maximum before having to allocate more memory*/
 
 #pragma pack()
 

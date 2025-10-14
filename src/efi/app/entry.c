@@ -69,7 +69,43 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     while ((Status = ST->ConIn->ReadKeyStroke(ST->ConIn, &Key)) == EFI_NOT_READY) ;
 
 	InitialiseBlockDeviceList(ImageHandle);
-	
+
+	/*display all valid gpt devices and the partitions each has
+	formatted using x.y: [partition-name], where x is the device index and y is the partition index (so the user can select them later)*/
+	print(L"Displaying all disks and GPT partitions: \r\n");
+
+	for (UINTN x = 0; x < blockAmount; x++) {
+		BLOCK_IO_NODE currentDevice = blockDevices[x];
+		if (currentDevice.device == nullptr)
+			continue;
+
+		CHAR16* xptr = UINT16ToUnicode(x);
+
+		GPT_PARTITION_ENTRY* entries = currentDevice.dsk->entries;
+		for (UINTN y = 0; y < currentDevice.dsk->hdr->NumberOfPartitionEntries; y++) {
+			/*check if entry is in use (since a minimum of 16,384 bytes must be reserved for the entry array)*/
+			if (entries->Attributes & 0x02 == 1 || (entries->PartitionTypeGUID.Data1 == 0 && entries->PartitionTypeGUID.Data2 == 0 && entries->PartitionTypeGUID.Data3 == 0 && entries->PartitionTypeGUID.Data4 == 0) || entries->StartingLBA == 0 || entries->EndingLBA == 0)
+				continue;
+
+			print(L"    ");
+			print(xptr);
+			print(L".");
+
+			CHAR16* yptr = UINT16ToUnicode(y);
+			print(yptr);
+			free(yptr);
+			print(L": ");
+			print(entries->PartitionName);
+			print(L"\r\n");
+			
+			entries = (GPT_PARTITION_ENTRY * )(((UINT8*)entries) + currentDevice.dsk->hdr->SizeOfPartitionEntry); //have to do byte pointer arithmetic to skip reserved sections of the rest of the gpt partition entry
+		}
+
+		free(xptr);
+	}
+
+	print(L"Finished displaying\r\n");
+
 	/*Waiting for keystoke*/
 	while ((Status = ST->ConIn->ReadKeyStroke(ST->ConIn, &Key)) == EFI_NOT_READY);
 	
