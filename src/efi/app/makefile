@@ -1,19 +1,31 @@
-efiinc = ..////include
+efiinc = ..////include//efi
+
+efilibs = libs
 
 geninc = ..//..////general//include
 
-efilibloc = libs
+genlibs = ../..////general//libs
 
-boot: entry dependencies
+interfaces = ..////include//interfaces
+
+allincludes = -I$(efiinc) -I$(efilibs) -I$(geninc) -I$(genlibs) -I$(interfaces)
+
+efidependencies := $(wildcard $(efilibs)//*.c)
+
+gendependencies := $(wildcard $(genlibs)//*.c)
+
+efiobjects := $(patsubst $(efilibs)//%.c,build//%.o,$(efidependencies))
+
+genobjects := $(patsubst $(genlibs)//%.c,build//%.o,$(gendependencies))
+
+$(BUILD_PATH)//BOOTX64.EFI: build//entry.o $(efiobjects) $(genobjects)
 	$(GCC_PATH)//x86_64-w64-mingw32-gcc -nostdlib -Wl,-dll -shared -Wl,--subsystem,10 -e efi_main -o $(BUILD_PATH)//BOOTX64.EFI build//*.o
 
-entry: entry.c
-	$(GCC_PATH)//x86_64-w64-mingw32-gcc -ffreestanding -I$(efiinc) -I$(geninc) -I$(efilibloc) -c -o "build//entry.o" entry.c
+build//entry.o: entry.c
+	$(GCC_PATH)//x86_64-w64-mingw32-gcc -ffreestanding $(allincludes) -c -o "build//entry.o" entry.c
 
-dependencies: stdlib efilib
+$(efiobjects): $(efidependencies)
+	$(GCC_PATH)//x86_64-w64-mingw32-gcc -ffreestanding $(allincludes) -c $(dir $<)$(subst .o,.c,$(@F)) -o $(@)
 
-stdlib: $(geninc)//g_stdlib.c
-	$(GCC_PATH)//x86_64-w64-mingw32-gcc -ffreestanding -I$(efiinc) -I$(geninc) -c -o "build//g_stdlib.o" $(geninc)//g_stdlib.c
-
-efilib: $(efilibloc)//GPT.c
-	$(GCC_PATH)//x86_64-w64-mingw32-gcc -ffreestanding -I$(efiinc) -I$(geninc) -c -o "build//GPT.o" $(efilibloc)//GPT.c
+$(genobjects): $(gendependencies)
+	$(GCC_PATH)//x86_64-w64-mingw32-gcc -ffreestanding $(allincludes) -c $(dir $<)$(subst .o,.c,$(@F)) -o $(@)

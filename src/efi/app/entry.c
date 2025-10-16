@@ -1,18 +1,10 @@
 //#include <efi.h>
 //#include <efilib.h>
 
-#include "efi_compiler.h"
-#include "efi_defines.h"
-#include "EFI_SYSTEM_TABLE.h"
-#include "g_str.h"
+#include "../include/efi/efi.h"
+#include "../../general/include/std.h"
 #include "g_stdlib.h"
-#include "EFI_BLOCK_IO2_PROTOCOL.h"
-#include "GPT.h"
-
-void DisplayCommands();
-EFI_STATUS GetVolumes(EFI_HANDLE ImageHandle, UINTN* amount, EFI_SIMPLE_FILE_SYSTEM_PROTOCOL*** interfaces, EFI_HANDLE** handles);
-EFI_STATUS ListVolumeInfo(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL** interface, UINT8 index);
-UINTN cin(IN CHAR16* out, IN UINTN amount);
+#include "./libs/Diskmgr.h"
 
 EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 {
@@ -74,7 +66,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	formatted using x.y: [partition-name], where x is the device index and y is the partition index (so the user can select them later)*/
 	print(L"Displaying all disks and GPT partitions: \r\n");
 
-	for (UINTN x = 0; x < blockAmount; x++) {
+	/*for (UINTN x = 0; x < blockAmount; x++) {
 		BLOCK_IO_NODE currentDevice = blockDevices[x];
 		if (currentDevice.device == nullptr)
 			continue;
@@ -84,7 +76,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 		GPT_PARTITION_ENTRY* entries = currentDevice.dsk->entries;
 		for (UINTN y = 0; y < currentDevice.dsk->hdr->NumberOfPartitionEntries; y++) {
 			/*check if entry is in use (since a minimum of 16,384 bytes must be reserved for the entry array)*/
-			if (entries->Attributes & 0x02 == 1 || (entries->PartitionTypeGUID.Data1 == 0 && entries->PartitionTypeGUID.Data2 == 0 && entries->PartitionTypeGUID.Data3 == 0 && entries->PartitionTypeGUID.Data4 == 0) || entries->StartingLBA == 0 || entries->EndingLBA == 0)
+			/*if (entries->Attributes & 0x02 == 1 || (entries->PartitionTypeGUID.Data1 == 0 && entries->PartitionTypeGUID.Data2 == 0 && entries->PartitionTypeGUID.Data3 == 0 && entries->PartitionTypeGUID.Data4 == 0) || entries->StartingLBA == 0 || entries->EndingLBA == 0)
 				continue;
 
 			print(L"    ");
@@ -102,7 +94,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 		}
 
 		free(xptr);
-	}
+	}*/
 
 	print(L"Finished displaying\r\n");
 
