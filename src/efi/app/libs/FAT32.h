@@ -6,6 +6,6 @@
 #include "FileSystemInterface.h"
 #include "std.h"
 
-extern void TryConstructGenericFromFAT32(GENERIC_PARTITION* partition, GENERIC_FILESYSTEM* out);
+extern void ConstructGenericFromFAT32(GENERIC_PARTITION* partition, GENERIC_FILESYSTEM* out);
 
 #endif

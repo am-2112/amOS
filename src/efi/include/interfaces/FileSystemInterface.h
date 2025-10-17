@@ -8,6 +8,7 @@
 #include "PartitionInterface.h"
 
 typedef struct _GENERIC_FILESYSTEM {
+	void* _structure;
 	GENERIC_PARTITION partition;
 } GENERIC_FILESYSTEM;
 

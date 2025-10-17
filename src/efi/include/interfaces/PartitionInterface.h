@@ -7,16 +7,19 @@
 #include "g_stdlib.h"
 #include "EFI_BLOCK_IO2_PROTOCOL.h"
 
+/*abstraction layer for block devices (or virtual, if emulated through software)*/
+typedef struct _GENERIC_BUFFER {
+	void* _buff;
+	EFI_STATUS(*Read_Block)(IN void* _buff, IN EFI_LBA LBA, IN UINTN BufferSize, OUT void* Buffer);
+	UINTN(*Get_Block_Size)(IN void* _buff);
+} GENERIC_BUFFER;
+
+
+/*_partition should have specific partition details (eg. gpt partition entries), as well as a pointer to the underlying disk structure (eg. gpt disk)*/
 typedef struct _GENERIC_PARTITION {
-	void* partition;
-	EFI_STATUS (*Read_Block)(IN void* partition, IN EFI_LBA LBA, IN UINTN BufferSize, OUT void* Buffer);
+	void* _partition;
+	GENERIC_BUFFER* buffer;
+	EFI_STATUS(*Read_Block)(IN void* partition, IN EFI_LBA LBA, IN UINTN BufferSize, OUT void* Buffer);
 } GENERIC_PARTITION;
-
-
-typedef struct _BLOCK_IO_NODE {
-	EFI_HANDLE handle;
-	EFI_BLOCK_IO_PROTOCOL* device; //if this is nullptr, then the node is empty and should be ignored
-	GENERIC_PARTITION dsk;
-} BLOCK_IO_NODE; /*removed struct _GPT_DISK since this will be generic for all block_io devices that are identified to be valid (ie. even for mbr or other partition styles)*/
 
 #endif

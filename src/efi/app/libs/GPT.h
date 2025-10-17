@@ -37,17 +37,18 @@ typedef struct _GPT_HEADER {
 
 typedef struct _GPT_DISK {
 	GPT_HEADER* hdr;
+	GENERIC_BUFFER* device;
 	struct _GPT_PARTITION_ENTRY* entries; //entry count defined in hdr->NumberOfPartitionEntries
 } GPT_DISK;
 
 typedef struct {
-	GPT_HEADER* hdr;
-	BLOCK_IO_NODE* device;
+	GPT_DISK* dsk;
+	UINTN entryNumber; /*what index entry is out of all the ones on dsk*/
 	struct _GPT_PARTITION_ENTRY* entry;
 } GPT_PARTITION;
 
-extern EFI_STATUS Read_GPT_Block(IN void* partition, IN EFI_LBA LBA, IN UINTN BufferSize, OUT void* Buffer);
-extern void ConstructGenericFromGPT(GPT_PARTITION* gpt, GENERIC_PARTITION* out);
+extern void ConstructGenericFromGPT(GPT_PARTITION* gpt, GENERIC_PARTITION** out);
+extern void ConstructGenericFromGPTDisk(GENERIC_BUFFER* device, GENERIC_DISK** out);
 
 static EFI_GUID EFI_PARTITION_INFO_PROTOCOL_GUID = { .Data1 = 0x8cf2f62c, .Data2 = 0xbc9b, .Data3 = 0x4821, .Data4 = {0x80, 0x8d, 0xec, 0x9e, 0xc4, 0x21, 0xa1, 0xa0} };
 static EFI_GUID EMPTY_GUID = { .Data1 = 0x00000000, .Data2 = 0x0000, .Data3 = 0x0000, .Data4 = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00} };
@@ -66,7 +67,7 @@ typedef struct _GPT_PARTITION_ENTRY {
 	CHAR16 PartitionName[36];
 } EFI_PARTITION_ENTRY, GPT_PARTITION_ENTRY;
 
-extern GPT_DISK* ValidateGPTHeader(EFI_BLOCK_IO_PROTOCOL* device);
+extern GPT_DISK* ValidateGPTHeader(GENERIC_BUFFER* device);
 
 #pragma pack()
 

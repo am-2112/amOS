@@ -60,11 +60,11 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     /*Waiting for keystoke*/
     while ((Status = ST->ConIn->ReadKeyStroke(ST->ConIn, &Key)) == EFI_NOT_READY) ;
 
-	InitialiseBlockDeviceList(ImageHandle);
+	InitDiskManager(ImageHandle);
 
 	/*display all valid gpt devices and the partitions each has
 	formatted using x.y: [partition-name], where x is the device index and y is the partition index (so the user can select them later)*/
-	print(L"Displaying all disks and GPT partitions: \r\n");
+	//print(L"Displaying all disks and GPT partitions: \r\n");
 
 	/*for (UINTN x = 0; x < blockAmount; x++) {
 		BLOCK_IO_NODE currentDevice = blockDevices[x];

@@ -1,20 +1,90 @@
 #include "GPT.h"
 
-EFI_STATUS Read_GPT_Block(IN void* partition, IN EFI_LBA LBA, IN UINTN BufferSize, OUT void* Buffer) {
-	return ((GPT_PARTITION*)partition)->device->device->ReadBlocks(((GPT_PARTITION*)partition)->device->device, ((GPT_PARTITION*)partition)->device->device->Media->MediaId, LBA, BufferSize, Buffer);
+EFI_STATUS Read_GPT_Block(IN void* _partition, IN EFI_LBA LBA, IN UINTN BufferSize, OUT void* Buffer) {
+	GPT_PARTITION* partition = (GPT_PARTITION*)_partition;
+	if (LBA > partition->entry->EndingLBA)
+		return EFI_INVALID_PARAMETER; /*avoid reading outside the partition*/
+	return partition->dsk->device->Read_Block(partition->dsk->device->_buff, partition->entry->StartingLBA + LBA, BufferSize, Buffer);
 }
 
-void ConstructGenericFromGPT(GPT_PARTITION* gpt, GENERIC_PARTITION* out) {
-	*out = (GENERIC_PARTITION){
-		.partition = gpt,
-		.Read_Block = Read_GPT_Block
+void ConstructGenericFromGPT(GPT_PARTITION* gpt, GENERIC_PARTITION** out) {
+	*out = malloc(sizeof(GENERIC_PARTITION));
+	**out = (GENERIC_PARTITION){
+		._partition = gpt,
+		.Read_Block = Read_GPT_Block,
+		.buffer = gpt->dsk->device
+	};
+}
+void ConstructGenericArrayFromGPT(GPT_PARTITION* gpt, GENERIC_PARTITION** out, IN UINTN amount) {
+	*out = malloc(sizeof(GENERIC_PARTITION) * amount);
+	for (UINTN i = amount; i < amount; i++) {
+		*(*out + i) = (GENERIC_PARTITION){
+			._partition = gpt + i,
+			.Read_Block = Read_GPT_Block,
+			.buffer = (gpt + i)->dsk->device
+		};
+	}
+}
+
+UINTN GetGPTPartitionCount(IN void* _disk) {
+	GPT_DISK* disk = (GPT_DISK*)_disk;
+	return disk->hdr->NumberOfPartitionEntries;
+}
+
+GENERIC_PARTITION* GetGPTPartition(IN void* _disk, IN UINTN partitionIndex) {
+	GPT_DISK* disk = (GPT_DISK*)_disk;
+	if (partitionIndex >= disk->hdr->NumberOfPartitionEntries)
+		return nullptr;
+
+	GPT_PARTITION* gpt = malloc(sizeof(GPT_PARTITION));
+	GENERIC_PARTITION* generic;
+
+	*gpt = (GPT_PARTITION){
+		.dsk = disk,
+		.entry = (EFI_PARTITION_ENTRY*)((uint8_t*)(disk->entries) + (disk->hdr->SizeOfPartitionEntry * partitionIndex)),
+		.entryNumber = partitionIndex
+	};
+
+	ConstructGenericFromGPT(gpt, &generic);
+	return generic;
+}
+
+GENERIC_PARTITION* GetGPTPartitions(IN void* _disk, OUT UINTN partitionCount) {
+	GPT_DISK* disk = (GPT_DISK*)_disk;
+	GPT_PARTITION* gpt = malloc(sizeof(GPT_PARTITION) * disk->hdr->NumberOfPartitionEntries);
+	GENERIC_PARTITION* generic;
+
+	for (UINTN i = 0; i < disk->hdr->NumberOfPartitionEntries; i++) {
+		*(gpt + i) = (GPT_PARTITION){
+			.dsk = disk,
+			.entry = (EFI_PARTITION_ENTRY*)((uint8_t*)(disk->entries) + (disk->hdr->SizeOfPartitionEntry * i)),
+			.entryNumber = i
+		};
+
+	}
+	ConstructGenericArrayFromGPT(gpt, &generic, disk->hdr->NumberOfPartitionEntries);
+	return generic;
+}
+
+void ConstructGenericFromGPTDisk(GENERIC_BUFFER* device, GENERIC_DISK** out) {
+	GPT_DISK* gpt = ValidateGPTHeader(device);
+	*out = nullptr;
+	if (gpt == nullptr)
+		return;
+
+	*out = malloc(sizeof(GENERIC_DISK));
+	**out = (GENERIC_DISK){
+		.disk = gpt,
+		.GetPartitionCount = GetGPTPartitionCount,
+		.GetPartition = GetGPTPartition,
+		.GetPartitions = GetGPTPartitions
 	};
 }
 
 /*expecting a pointer to one of the devices in blockDevices (nullptr if invalid)*/
-GPT_DISK* ValidateGPTHeader(EFI_BLOCK_IO_PROTOCOL* device) {
+GPT_DISK* ValidateGPTHeader(GENERIC_BUFFER* device) {
 	GPT_DISK* dsk = malloc(sizeof(GPT_DISK));
-	GPT_HEADER* hdr = malloc(device->Media->BlockSize); //have to oversize to block size; reserving the rest
+	GPT_HEADER* hdr = malloc(device->Get_Block_Size(device->_buff)); //have to oversize to block size; reserving the rest
 	GPT_PARTITION_ENTRY* entries = nullptr;
 
 	EFI_LBA lba = 0;
@@ -39,7 +109,7 @@ check_failed: //will repeat checks if the first header is invalid
 	}
 
 	print(L"Getting GPT Header: ");
-	Status = device->ReadBlocks(device, device->Media->MediaId, lba, device->Media->BlockSize, hdr);
+	Status = device->Read_Block(device->_buff, lba, device->Get_Block_Size(device->_buff), hdr);
 	if (EFI_ERROR(Status)) {
 		print(L"Failed\r\n");
 		goto check_failed;
@@ -66,10 +136,10 @@ check_failed: //will repeat checks if the first header is invalid
 					/*Will now read in the PartitionEntryArray and calculate its crc32*/
 					print(L"    Reading Partition Entry Array: ");
 
-					UINTN amountOfBlocksNeeded = ((hdr->NumberOfPartitionEntries * hdr->SizeOfPartitionEntry) + (device->Media->BlockSize - 1)) / device->Media->BlockSize; //addition to ensure rounding up
-					entries = malloc(amountOfBlocksNeeded * device->Media->BlockSize); //to get successive entries, will need to do pointer arithmetic to skip reserved sections of [SizeOfPartitionEntry - 128] size
+					UINTN amountOfBlocksNeeded = ((hdr->NumberOfPartitionEntries * hdr->SizeOfPartitionEntry) + (device->Get_Block_Size(device->_buff) - 1)) / device->Get_Block_Size(device->_buff); //addition to ensure rounding up
+					entries = malloc(amountOfBlocksNeeded * device->Get_Block_Size(device->_buff)); //to get successive entries, will need to do pointer arithmetic to skip reserved sections of [SizeOfPartitionEntry - 128] size
 
-					Status = device->ReadBlocks(device, device->Media->MediaId, hdr->PartitionEntryLBA, amountOfBlocksNeeded * device->Media->BlockSize, entries);
+					Status = device->Read_Block(device->_buff, hdr->PartitionEntryLBA, amountOfBlocksNeeded * device->Get_Block_Size(device->_buff), entries);
 					if (EFI_ERROR(Status)) {
 						print(L"Failed\r\n");
 						goto check_failed;
@@ -108,7 +178,8 @@ check_failed: //will repeat checks if the first header is invalid
 
 	*dsk = (GPT_DISK){
 		.hdr = hdr,
-		.entries = entries
+		.entries = entries,
+		.device = device
 	};
 	return dsk;
 }

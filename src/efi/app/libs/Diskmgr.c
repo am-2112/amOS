@@ -1,109 +1,85 @@
 #include "Diskmgr.h"
+#include "GPT.h"
 
-FREE_BLOCK_IO_NODE* freeNode;
-BLOCK_IO_NODE* blockDevices = nullptr;
-UINTN blockAmount = 0; /*current*/
-UINTN maxBlockAmount;
+BOOLEAN initialised = false;
 
-void RemoveFromBlockList(EFI_HANDLE ImageHandle, BLOCK_IO_NODE* device) {
-	blockAmount--;
+EFI_STATUS ReadFromBlockIO(IN void* _buff, IN EFI_LBA LBA, IN UINTN BufferSize, OUT void* Buffer) {
+	BLOCK_IO_NODE* buff = (BLOCK_IO_NODE*)_buff;
+	if (LBA > buff->device->Media->LastBlock)
+		return EFI_INVALID_PARAMETER;
+	buff->device->ReadBlocks(buff->device, buff->device->Media->MediaId, LBA, BufferSize, Buffer);
+}
+UINTN Get_Block_Size(IN void* _buff) {
+	BLOCK_IO_NODE* buff = (BLOCK_IO_NODE*)_buff;
+	return buff->device->Media->BlockSize;
+}
 
-	EFI_GUID Block_Protocol_GUID = EFI_BLOCK_IO_PROTOCOL_GUID;
-	ST->BootServices->CloseProtocol(device->handle, &Block_Protocol_GUID, ImageHandle, NULL);
-	device->device = nullptr;
-
-	FREE_BLOCK_IO_NODE* newFreeNode = malloc(sizeof(FREE_BLOCK_IO_NODE));
-	*newFreeNode = (FREE_BLOCK_IO_NODE){
-		.prev = freeNode,
-		.self = device
+/*add a by-reference version? also repeat for other ConstructGeneric functions?*/
+void ConstructGenericFromBlockIO(IN BLOCK_IO_NODE* block_io, OUT GENERIC_BUFFER** buffer) {
+	*buffer = malloc(sizeof(GENERIC_BUFFER));
+	**buffer = (GENERIC_BUFFER){
+		._buff = block_io,
+		.Read_Block = ReadFromBlockIO,
+		.Get_Block_Size = Get_Block_Size
 	};
-	freeNode = newFreeNode;
 }
 
-void AddToBlockList(EFI_HANDLE ImageHandle, EFI_HANDLE deviceHandle) {
-	/*EFI_GUID Block_Protocol_GUID = EFI_BLOCK_IO_PROTOCOL_GUID;
-	EFI_BLOCK_IO_PROTOCOL* device;
-	Status = ST->BootServices->OpenProtocol(deviceHandle, &Block_Protocol_GUID, (VOID**)&device, ImageHandle, NULL, EFI_OPEN_PROTOCOL_GET_PROTOCOL);
-	if (EFI_ERROR(Status))
-		return;
+/*add corresponding CloseDiskManager or likewise*/
+void InitDiskManager(EFI_HANDLE ImageHandle) {
 
-	print(L"Obtained Block Protocol From Handle");
-	if (device->Media->LogicalPartition) {
-		print(L" >> Logical Partition\r\n");
-	}
-	else {
-		print(L" >> Physical Device\r\n");
-	}
+	if (!initialised) {
+		initialised = true;
 
-	/*should still investigate logical partitions in case they are the only partition (in which case LogicalPartition is true even if the handle represents the physical device)*/
-	/*GPT_DISK* dsk = ValidateGPTHeader(device);
-	if (dsk == nullptr)
-		return;
+		EFI_GUID Block_Protocol_GUID = EFI_BLOCK_IO_PROTOCOL_GUID;
+		EFI_HANDLE* new_block_handles;
+		UINTN blockAmount;
+		Status = ST->BootServices->LocateHandleBuffer(ByProtocol, &Block_Protocol_GUID, nullptr, &blockAmount, &new_block_handles);
+		if (EFI_ERROR(Status))
+			return;
 
-	/*allocate more memory, or attempt to use up free array elements*/
-	/*for (int i = 0; i < dsk->hdr->NumberOfPartitionEntries; i++) {
-		UINTN index = blockAmount;
-		if (blockAmount == maxBlockAmount) {
-			maxBlockAmount *= 1.5;
-			BLOCK_IO_NODE* newDeviceLocation = malloc(sizeof(BLOCK_IO_NODE) * maxBlockAmount);
-
-			UINTN i = blockAmount;
-			while (--i)
-				newDeviceLocation[i] = blockDevices[i]; //copy
-
-			free(blockDevices);
-			blockDevices = newDeviceLocation;
-
-		}
-		else if (freeNode != nullptr) {
-			index = freeNode->self - blockDevices;
-
-			FREE_BLOCK_IO_NODE* currentNode = freeNode;
-			freeNode = freeNode->prev;
-			free(currentNode);
-		}
-
-		/*add device to block array*/
-		/*blockAmount++;
-		blockDevices[index] = (BLOCK_IO_NODE){
-			.handle = deviceHandle,
-			.device = device,
-		};
-		ConstructGenericFromGPT(dsk, blockDevices[index].dsk);
-	}*/
-}
-
-void InitialiseBlockDeviceList(EFI_HANDLE ImageHandle) {
-
-	/*in case initialise is called more than once*/
-	if (blockDevices != nullptr) {
+		/*start checking for partition structures (start with gpt, then mbr)*/
 		for (UINTN i = 0; i < blockAmount; i++) {
 			EFI_GUID Block_Protocol_GUID = EFI_BLOCK_IO_PROTOCOL_GUID;
-			ST->BootServices->CloseProtocol(blockDevices[i].handle, &Block_Protocol_GUID, ImageHandle, NULL);
-		}
-		free(blockDevices);
-		blockAmount = 0;
-
-		while (freeNode != nullptr) {
-			FREE_BLOCK_IO_NODE* currentNode = freeNode;
-			if (freeNode->prev != nullptr) {
-				freeNode = freeNode->prev;
+			EFI_BLOCK_IO_PROTOCOL* device;
+			Status = ST->BootServices->OpenProtocol(new_block_handles[i], &Block_Protocol_GUID, (VOID**)&device, ImageHandle, NULL, EFI_OPEN_PROTOCOL_GET_PROTOCOL);
+			if (EFI_ERROR(Status)) {
+				print(L"Failed to obtain block protocol from handle\r\n");
+				continue;
 			}
-			free(currentNode);
+
+			print(L"Obtained Block Protocol From Handle");
+			if (device->Media->LogicalPartition) {
+				print(L" >> Logical Partition\r\n");
+			}
+			else {
+				print(L" >> Physical Device\r\n");
+			}
+
+			GENERIC_BUFFER* buffer;
+			BLOCK_IO_NODE* node = malloc(sizeof(BLOCK_IO_NODE));
+			*node = (BLOCK_IO_NODE){
+				.device = device,
+				.handle = new_block_handles[i]
+			};
+			ConstructGenericFromBlockIO(node, &buffer);
+
+			GENERIC_DISK* gpt;
+			ConstructGenericFromGPTDisk(buffer, &gpt);
+			if (gpt == nullptr) {
+				//try detect mbr partition
+				continue;
+			}
+
+			/*display some debugging information*/
+			print(L"partition count: ");
+			CHAR16* pCount = UINT16ToUnicode(gpt->GetPartitionCount(gpt->disk)); //really need to make larger versions of these for other number sizes
+			print(pCount);
+			print(L"\r\n");
+			for (UINTN p = 0; p < gpt->GetPartitionCount(gpt->disk); p++) {
+
+			}
 		}
+
+		free(new_block_handles);
 	}
-	freeNode = nullptr;
-
-	EFI_GUID Block_Protocol_GUID = EFI_BLOCK_IO_PROTOCOL_GUID;
-	EFI_HANDLE* new_block_handles;
-	Status = ST->BootServices->LocateHandleBuffer(ByProtocol, &Block_Protocol_GUID, nullptr, &maxBlockAmount, &new_block_handles);
-	if (EFI_ERROR(Status))
-		return;
-
-	blockDevices = malloc(sizeof(BLOCK_IO_NODE) * maxBlockAmount);
-	for (UINT8 i = 0; i < maxBlockAmount; i++) {
-		AddToBlockList(ImageHandle, new_block_handles[i]);
-	}
-
-	free(new_block_handles);
 }
