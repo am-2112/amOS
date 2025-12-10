@@ -4,6 +4,10 @@ EFI_STATUS Read_GPT_Block(IN void* _partition, IN EFI_LBA LBA, IN UINTN BufferSi
 	GPT_PARTITION* partition = (GPT_PARTITION*)_partition;
 	if (LBA > partition->entry->EndingLBA)
 		return EFI_INVALID_PARAMETER; /*avoid reading outside the partition*/
+	print(L"Starting LBA: ");
+	CHAR16* slba = UINT64ToUnicode(partition->entry->StartingLBA);
+	print(slba);
+	print(L"\r\n");
 	return partition->dsk->device->Read_Block(partition->dsk->device->_buff, partition->entry->StartingLBA + LBA, BufferSize, Buffer);
 }
 
@@ -17,11 +21,11 @@ void ConstructGenericFromGPT(GPT_PARTITION* gpt, GENERIC_PARTITION** out) {
 }
 void ConstructGenericArrayFromGPT(GPT_PARTITION* gpt, GENERIC_PARTITION** out, IN UINTN amount) {
 	*out = malloc(sizeof(GENERIC_PARTITION) * amount);
-	for (UINTN i = amount; i < amount; i++) {
-		*(*out + i) = (GENERIC_PARTITION){
-			._partition = gpt + i,
+	for (UINTN i = 0; i < amount; i++) {
+		(*out)[i] = (GENERIC_PARTITION){
+			._partition = &gpt[i],
 			.Read_Block = Read_GPT_Block,
-			.buffer = (gpt + i)->dsk->device
+			.buffer = gpt[i].dsk->device
 		};
 	}
 }
@@ -41,7 +45,7 @@ GENERIC_PARTITION* GetGPTPartition(IN void* _disk, IN UINTN partitionIndex) {
 
 	*gpt = (GPT_PARTITION){
 		.dsk = disk,
-		.entry = (EFI_PARTITION_ENTRY*)((uint8_t*)(disk->entries) + (disk->hdr->SizeOfPartitionEntry * partitionIndex)),
+		.entry = (EFI_PARTITION_ENTRY*)(((uint8_t*)(disk->entries)) + (disk->hdr->SizeOfPartitionEntry * partitionIndex)),
 		.entryNumber = partitionIndex
 	};
 
@@ -49,18 +53,26 @@ GENERIC_PARTITION* GetGPTPartition(IN void* _disk, IN UINTN partitionIndex) {
 	return generic;
 }
 
-GENERIC_PARTITION* GetGPTPartitions(IN void* _disk, OUT UINTN partitionCount) {
+GENERIC_PARTITION* GetGPTPartitions(IN void* _disk, OUT UINTN* partitionCount) {
 	GPT_DISK* disk = (GPT_DISK*)_disk;
+	*partitionCount = disk->hdr->NumberOfPartitionEntries;
 	GPT_PARTITION* gpt = malloc(sizeof(GPT_PARTITION) * disk->hdr->NumberOfPartitionEntries);
 	GENERIC_PARTITION* generic;
 
 	for (UINTN i = 0; i < disk->hdr->NumberOfPartitionEntries; i++) {
+		EFI_PARTITION_ENTRY* currentEntry = (EFI_PARTITION_ENTRY*)((uint8_t*)(disk->entries) + (disk->hdr->SizeOfPartitionEntry * i));
+		/*check if the entry is empty (then assume all future ones will also be empty - since a minimum of 16kb is to be reserved, even if there aren't that many partitions)*/
+		if (currentEntry->Attributes & 0x02 == 1 || (currentEntry->PartitionTypeGUID.Data1 == 0 && currentEntry->PartitionTypeGUID.Data2 == 0 && currentEntry->PartitionTypeGUID.Data3 == 0 && currentEntry->PartitionTypeGUID.Data4 == 0) || currentEntry->StartingLBA == 0 || currentEntry->EndingLBA == 0) {
+			*partitionCount = i;
+			ConstructGenericArrayFromGPT(gpt, &generic, i);
+			return generic;
+		}
+
 		*(gpt + i) = (GPT_PARTITION){
 			.dsk = disk,
-			.entry = (EFI_PARTITION_ENTRY*)((uint8_t*)(disk->entries) + (disk->hdr->SizeOfPartitionEntry * i)),
+			.entry = (EFI_PARTITION_ENTRY*)(((uint8_t*)(disk->entries)) + (disk->hdr->SizeOfPartitionEntry * i)),
 			.entryNumber = i
 		};
-
 	}
 	ConstructGenericArrayFromGPT(gpt, &generic, disk->hdr->NumberOfPartitionEntries);
 	return generic;
@@ -108,16 +120,16 @@ check_failed: //will repeat checks if the first header is invalid
 		return nullptr;
 	}
 
-	print(L"Getting GPT Header: ");
+	//print(L"Getting GPT Header: ");
 	Status = device->Read_Block(device->_buff, lba, device->Get_Block_Size(device->_buff), hdr);
 	if (EFI_ERROR(Status)) {
-		print(L"Failed\r\n");
+		//print(L"Failed\r\n");
 		goto check_failed;
 	}
 	else {
-		print(L"Success\r\n");
+		//print(L"Success\r\n");
 		if (hdr->Signature != 0x5452415020494645) {
-			print(L"    Invalid Signature!\r\n");
+			//print(L"    Invalid Signature!\r\n");
 			goto check_failed;
 		}
 		else {
@@ -150,7 +162,7 @@ check_failed: //will repeat checks if the first header is invalid
 
 						ST->BootServices->CalculateCrc32(entries, hdr->NumberOfPartitionEntries * hdr->SizeOfPartitionEntry, &CalculatedCRC32);
 						if (CalculatedCRC32 != hdr->PartitionEntryArrayCRC32) {
-							print(L"        Partition Entry CRC does not match\r\n");
+							//print(L"        Partition Entry CRC does not match\r\n");
 							goto check_failed;
 						}
 						else {
@@ -161,7 +173,7 @@ check_failed: //will repeat checks if the first header is invalid
 					}
 				}
 				else {
-					print(L"    Invalid header LBA\r\n");
+					//print(L"    Invalid header LBA\r\n");
 					goto check_failed;
 				}
 			}

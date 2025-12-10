@@ -18,7 +18,7 @@ typedef struct _GENERIC_DISK {
 	void* disk;
 	UINTN(*GetPartitionCount)(IN void* disk);
 	GENERIC_PARTITION*(*GetPartition)(IN void* disk, IN UINTN partitionIndex);
-	GENERIC_PARTITION*(*GetPartitions)(IN void* disk, OUT UINTN partitionCount);
+	GENERIC_PARTITION*(*GetPartitions)(IN void* disk, OUT UINTN* partitionCount);
 } GENERIC_DISK;
 
 
@@ -26,6 +26,9 @@ typedef struct _GENERIC_DISK {
 /*Detect suitable physical devices, set up the drive-partition storage, drive letters, and protocol events for device changes*/
 extern void InitDiskManager(EFI_HANDLE imageHandle);
 extern void ConstructGenericFromBlockIO(IN BLOCK_IO_NODE* block_io, OUT GENERIC_BUFFER** buffer);
+
+extern BOOLEAN FileExists(CHAR16* filePath);
+extern void* OpenFile(CHAR16* filePath);
 
 #pragma pack()
 

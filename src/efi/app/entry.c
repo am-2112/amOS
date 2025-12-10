@@ -14,6 +14,8 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     ST = SystemTable;
 	_changeAllocator(ST->BootServices);
 
+	ST->ConOut->SetMode(ST->ConOut, 2);
+
     /* Say hi */
 	if (!print(L"============|Boot Loader|============\r\n"))
 		return Status;

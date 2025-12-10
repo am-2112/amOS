@@ -47,13 +47,13 @@ void InitDiskManager(EFI_HANDLE ImageHandle) {
 				continue;
 			}
 
-			print(L"Obtained Block Protocol From Handle");
+			/*print(L"Obtained Block Protocol From Handle");
 			if (device->Media->LogicalPartition) {
 				print(L" >> Logical Partition\r\n");
 			}
 			else {
 				print(L" >> Physical Device\r\n");
-			}
+			}*/
 
 			GENERIC_BUFFER* buffer;
 			BLOCK_IO_NODE* node = malloc(sizeof(BLOCK_IO_NODE));
@@ -72,12 +72,29 @@ void InitDiskManager(EFI_HANDLE ImageHandle) {
 
 			/*display some debugging information*/
 			print(L"partition count: ");
-			CHAR16* pCount = UINT16ToUnicode(gpt->GetPartitionCount(gpt->disk)); //really need to make larger versions of these for other number sizes
-			print(pCount);
+			//CHAR16* pCount = UINT16ToUnicode(gpt->GetPartitionCount(gpt->disk)); //really need to make larger versions of these for other number sizes
+			//print(pCount);
+			//print(L"\r\n");
+			//for (UINTN p = 0; p < gpt->GetPartitionCount(gpt->disk); p++) {
+				
+			//}
+			UINTN pCount;
+			GENERIC_PARTITION* partitions = gpt->GetPartitions(gpt->disk, &pCount);
+			CHAR16* partCount = UINT64ToUnicode(pCount);
+			print(partCount);
 			print(L"\r\n");
-			for (UINTN p = 0; p < gpt->GetPartitionCount(gpt->disk); p++) {
-
+			/*then, attempt to parse any filesystems on the drive
+			
+			*/
+			EFI_INPUT_KEY Key;
+			for (UINTN p = 0; p < pCount; p++) {
+				GENERIC_FILESYSTEM* fSystem;
+				ConstructGenericFromFAT32(&partitions[p], &fSystem);
+				/*Waiting for keystoke*/
+				while ((Status = ST->ConIn->ReadKeyStroke(ST->ConIn, &Key)) == EFI_NOT_READY);
 			}
+
+			free(partitions);
 		}
 
 		free(new_block_handles);
