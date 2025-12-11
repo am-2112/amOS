@@ -5,10 +5,6 @@ EFI_STATUS Read_GPT_Block(IN void *_partition, IN EFI_LBA LBA, IN UINTN BufferSi
 	GPT_PARTITION *partition = (GPT_PARTITION *)_partition;
 	if (partition->entry->StartingLBA + LBA > partition->entry->EndingLBA)
 		return EFI_INVALID_PARAMETER; /*avoid reading outside the partition*/
-	print(L"LBA: ");
-	CHAR16 *slba = UINT64ToUnicode(partition->entry->StartingLBA + LBA);
-	print(slba);
-	print(L"\r\n");
 	return partition->dsk->device->Read_Block(partition->dsk->device->_buff, partition->entry->StartingLBA + LBA, BufferSize, Buffer);
 }
 

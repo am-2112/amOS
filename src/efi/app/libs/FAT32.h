@@ -145,6 +145,34 @@ The first two entries in the FAT are reserved
 typedef uint32_t FAT32_ENTRY;
 typedef uint16_t FAT16_ENTRY;
 
+INTERFACE_DECL(_FAT_ORDERED_ENTRY);
+
+/*acting as a linked list*/
+typedef struct _FAT_ORDERED_ENTRY
+{
+	struct _FAT_ORDERED_ENTRY *prev;
+	union
+	{
+		FAT16_ENTRY fat16;
+		FAT32_ENTRY fat32;
+	};
+} FAT_ORDERED_ENTRY;
+
+typedef struct _FAT_INTERFACE
+{
+	struct _BPB_FAT *bpb;
+	uint8_t type;		   /*12, 16, or 32*/
+	uint32_t max_clusters; /*also is the max entry in the fat*/
+	uint32_t freeClusterCount;
+	struct _FAT_ORDERED_ENTRY free_fat_entries; /*linked list of only free entries*/
+	struct _FAT_ORDERED_ENTRY *last_free_entry; /*last entry for easy deletion*/
+	union										/*array of all clusters in the FAT (including free)*/
+	{
+		FAT16_ENTRY *fat16;
+		FAT32_ENTRY *fat32;
+	};
+} FAT_INTERFACE;
+
 typedef uint16_t WORD;
 typedef uint32_t DWORD;
 

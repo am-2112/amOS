@@ -84,7 +84,7 @@ FAT32_ENTRY FAT32(uint32_t index, uint8_t fatTableNo, BPB_FAT *bpb, GENERIC_PART
 	return ((FAT32_ENTRY *)(*dat))[ThisFATEntOffset] & 0x0FFFFFFF;
 }
 
-void Read_FAT16_Table(BPB_FAT *bpb, GENERIC_PARTITION *partition, GENERIC_FILESYSTEM **out)
+void Read_FAT16_Table(BPB_FAT *bpb, GENERIC_PARTITION *partition, GENERIC_FILESYSTEM **out, uint16_t MAX_CLUSTERS)
 {
 	/*testing fat table integrity by checking reserved entries (FAT[0] contains BPB_MEDIA in low 8 bits (other set to 1), and second reserved is set by format utility to EOC value)*/
 	print(L"Reading first FAT16 reserved entry: \r\n");
@@ -113,9 +113,54 @@ void Read_FAT16_Table(BPB_FAT *bpb, GENERIC_PARTITION *partition, GENERIC_FILESY
 	{
 		print(L"Invalid table!\r\n");
 	}
+
+	/*not saving the first two clusters, but will now loop from 2->MAX_CLUSTERS to find allocated and free clusters (as well as calculating free space) (all clusters past and including first with 0x00 entry in fat are considered free)
+	Then, save pointer to said fat table information as well as MAX_CLUSTERS to internal store before creating generic*/
+	FAT_INTERFACE *interface = malloc(sizeof(FAT_INTERFACE));
+	*interface = (FAT_INTERFACE){
+		.bpb = bpb,
+		.type = 16,
+		.max_clusters = MAX_CLUSTERS,
+		.fat32 = malloc(sizeof(FAT16_ENTRY) * MAX_CLUSTERS),
+		.freeClusterCount = 0};
+
+	FAT_ORDERED_ENTRY *free_prev = malloc(sizeof(FAT_ORDERED_ENTRY));
+	FAT_ORDERED_ENTRY *free_current = &interface->free_fat_entries;
+
+	for (uint16_t currentCluster = 2; currentCluster < MAX_CLUSTERS; currentCluster++)
+	{
+		interface->fat16[currentCluster] = FAT16(currentCluster, 0, bpb, partition, &table, &sector);
+		if (!interface->fat16[currentCluster]) /*free; add to free linked list*/
+		{
+			interface->freeClusterCount++;
+
+			free_current->fat16 = interface->fat16[currentCluster];
+			free_current->prev = free_prev;
+
+			free_prev = free_current;
+			free_current = malloc(sizeof(FAT_ORDERED_ENTRY));
+		}
+	}
+	interface->last_free_entry = free_prev; /*make sure to add reference to last in list*/
+	print(L"Finished checking FAT!\r\n");
+
+	if (interface->freeClusterCount == 0)
+	{
+		print(L"No free space available!\r\n");
+	}
+	else
+	{
+		UINT64 bytes = (interface->freeClusterCount) * (uint32_t)bpb->common.BPB_BytesPerSec * (uint32_t)bpb->common.BPB_SecPerClus;
+		CHAR16 *storageSpace = UINT64ToUnicode((UINT64)(bytes / 1000000));
+		print(L"Space Free: ");
+		print(storageSpace);
+		print(L" MB\r\n");
+	}
 }
 
-void Read_FAT32_Table(BPB_FAT *bpb, GENERIC_PARTITION *partition, GENERIC_FILESYSTEM **out)
+/*from the seems of it, free and taken clusters can be interweaved*/
+
+void Read_FAT32_Table(BPB_FAT *bpb, GENERIC_PARTITION *partition, GENERIC_FILESYSTEM **out, uint32_t MAX_CLUSTERS)
 {
 	/*testing fat table integrity by checking reserved entries (FAT[0] contains BPB_MEDIA in low 8 bits (other set to 1), and second reserved is set by format utility to EOC value)*/
 	print(L"Reading first FAT32 reserved entry: \r\n");
@@ -143,6 +188,49 @@ void Read_FAT32_Table(BPB_FAT *bpb, GENERIC_PARTITION *partition, GENERIC_FILESY
 	else
 	{
 		print(L"Invalid table!\r\n");
+	}
+
+	/*not saving the first two clusters, but will now loop from 2->MAX_CLUSTERS to find allocated and free clusters (as well as calculating free space)
+	Then, save pointer to said fat table information as well as MAX_CLUSTERS to internal store before creating generic*/
+	FAT_INTERFACE *interface = malloc(sizeof(FAT_INTERFACE));
+	*interface = (FAT_INTERFACE){
+		.bpb = bpb,
+		.type = 32,
+		.max_clusters = MAX_CLUSTERS,
+		.fat32 = malloc(sizeof(FAT32_ENTRY) * MAX_CLUSTERS),
+		.freeClusterCount = 0};
+
+	FAT_ORDERED_ENTRY *free_prev = malloc(sizeof(FAT_ORDERED_ENTRY));
+	FAT_ORDERED_ENTRY *free_current = &interface->free_fat_entries;
+
+	for (uint32_t currentCluster = 2; currentCluster < MAX_CLUSTERS; currentCluster++)
+	{
+		interface->fat32[currentCluster] = FAT32(currentCluster, 0, bpb, partition, &table, &sector);
+		if (interface->fat32[currentCluster] << 4 == 0) /*free; add to free linked list*/
+		{
+			interface->freeClusterCount++;
+
+			free_current->fat32 = interface->fat32[currentCluster];
+			free_current->prev = free_prev;
+
+			free_prev = free_current;
+			free_current = malloc(sizeof(FAT_ORDERED_ENTRY));
+		}
+	}
+	interface->last_free_entry = free_prev; /*make sure to add reference to last in list*/
+	print(L"Finished checking FAT!\r\n");
+
+	if (interface->freeClusterCount == 0)
+	{
+		print(L"No free space available!\r\n");
+	}
+	else
+	{
+		UINT64 bytes = (interface->freeClusterCount) * (uint32_t)bpb->common.BPB_BytesPerSec * (uint32_t)bpb->common.BPB_SecPerClus;
+		CHAR16 *storageSpace = UINT64ToUnicode((UINT64)(bytes / 1000000));
+		print(L"Space Free: ");
+		print(storageSpace);
+		print(L" MB\r\n");
 	}
 }
 
@@ -182,7 +270,7 @@ void AttemptMountAsFAT(BPB_FAT *bpb, GENERIC_PARTITION *partition, GENERIC_FILES
 	else if (CountOfClusters < 65525)
 	{
 		print(L"Volume is FAT16\r\n");
-		Read_FAT16_Table(bpb, partition, out);
+		Read_FAT16_Table(bpb, partition, out, CountOfClusters + 1);
 	}
 	else
 	{
@@ -194,7 +282,7 @@ void AttemptMountAsFAT(BPB_FAT *bpb, GENERIC_PARTITION *partition, GENERIC_FILES
 		}
 		else
 		{
-			Read_FAT32_Table(bpb, partition, out);
+			Read_FAT32_Table(bpb, partition, out, CountOfClusters + 1);
 		}
 	}
 }
