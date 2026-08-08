@@ -1,6 +1,9 @@
 # amOS
 Creating a primitive OS for x64 systems using the UEFI spec (including a simple bootloader)
 
+Documentation [here](Documentation/Overview.md)
+
+
 ## Current Plans
 * Using BLOCK_IO_PROTOCOL to read logical blocks from device for GPT partition recognition (and parsing FAT32 filesystem later)
 * Develop a simple cli to run other efi applications (made interruptible for debug purposes)
