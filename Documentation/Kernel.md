@@ -15,13 +15,16 @@ Overrideable abstractions are implemented in library operating systems (libOSes)
 
 ### How does this apply to amOS?
 
-amOS will use a (mostly) monolithic exokernel.
+amOS will use an exokernel.
 
-Monolithic kernels provide efficiency for systems by reducing the amount of context switches and messaging (especially on x86 architectures where task switches are expensive operations)[^1]. <br/>
+Monolithic kernels provide efficiency for systems by reducing the amount of context switches and messaging (especially on x86 architectures where task switches are expensive operations)[^1]. However, the abstractions these provide can be left to libOSes. <br/>
 Exokernels represents as little abstraction as possible, to give programs as much control over the hardware as possible (in a secure way) for programs to take advantage of the present hardware - which can result in drastic performance improvements (see the Cheetah web server from Engler et al. running up to eight times faster than the competition[^2]).
 
 While it will take great consideration during the design phase to make a good interface for an exokernel, putting the burden of abstractions in separate libOSes should improve the active development process by making things easier to prototype.
 
+![Overview of an exokernel. They give more direct access to hardware, without unnecessary abstractions](https://github.com/user-attachments/assets/d2a1b79f-f245-42a2-90b1-15d6bff8b2a4)[^4]
+
 [^1]: https://wiki.osdev.org/Kernal
 [^2]: https://wiki.osdev.org/Exokernel
 [^3]: https://en.wikipedia.org/wiki/Exokernel#Design
+[^4]: https://en.wikipedia.org/wiki/Exokernel
