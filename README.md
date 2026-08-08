@@ -1,7 +1,7 @@
 # amOS
 Creating a primitive OS for x64 systems using the UEFI spec (including a simple bootloader)
 
-Documentation [here](Documentation/Overview.md)
+Documentation [here](Documentation/Table%20Of%20Contents.md)
 
 
 ## Current Plans
