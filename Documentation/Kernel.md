@@ -24,6 +24,19 @@ While it will take great consideration during the design phase to make a good in
 
 ![Overview of an exokernel. They give more direct access to hardware, without unnecessary abstractions](https://github.com/user-attachments/assets/d2a1b79f-f245-42a2-90b1-15d6bff8b2a4)[^4]
 
+## Implementation
+There are a few things needed in a successful implementation of a kernel. The kernel **must** be able to: 
+* Manage Shared Resources
+  - Memory
+  - Devices
+    - GPUs, CPUs, Disks, Peripherals
+  - Networking
+* Interfaces for using the above
+* A shell to run executables and other commands from the above interfaces
+  - A command line in my case (libOSes can provide gui abstractions)
+* Security and protection of programs
+
+
 [^1]: https://wiki.osdev.org/Kernal
 [^2]: https://wiki.osdev.org/Exokernel
 [^3]: https://en.wikipedia.org/wiki/Exokernel#Design
