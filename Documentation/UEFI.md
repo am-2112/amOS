@@ -45,18 +45,31 @@ It can only use memory it has allocated from the firmware and can only use UEFI 
 From this point on, the only services and protocols available to us will be those defined in the Runtime Services, and it will be up to the kernel to manage everything (once control is passed to it by the OS Loader). See below for a summary of boot service interfaces, followed by runtime services. Afterwards, we will deduce the full extent of what needs to happen during the boot window (ie. before exiting boot services). <br/>
 **Unless otherwise specified**, protocol interface structure is not allocated from runtime memory and as such, protocol member functions should not be called at runtime.
 
+## EFI System Table
+The EFI System Table contains pointers to the runtime and boot services tables (this is how the majority of the services available from UEFI are accessed). After a call to `EFI_BOOT_SERVICES.ExitBootServices()`, pointers pertaining to boot services, console devices, and text protocols become invalid. All elements in the service tables are pointers to functions (ie. Boot Services and Runtime Services). <br/>
+So while Boot or Runtime Services are being used by anything, the EFI System Table and the corresponding tables for Boot and Runtime Services should not be overwritten
+
 ## Boot Services
+All of the services mentioned below are only available *before* a successful call to `EFI_BOOT_SERVICES.ExitBootService`. This function is called to terminate all boot services. The UEFI OS Loader must ensure it has the system's current memory map by the time it does this by calling `EFI_BOOT_SERVICES.GetMemoryMap()`. The OS Loader can still call to Memory Allocation Services after the first call to this service. Afterwards, the UEFI OS Loader owns all **available** memory in the system, including any memory marked as `EfiBootServicesCode` and `EfiBootServicesData`.
+
+### Event, Timer and Task Priority Services
+These functions are used during preboot to create, close, signal, and wait for events; to set timers; and to raise and restore task priority levels. <br/>
+Execution in boot service environment occurs at different task priority levels (TPLs) where higher priority tasks may interrupt tasks executing at a lower priority level. However, there are restrictions on the TPL levels at which many UEFI service functions and protocol interface functions can execute. In order of priority: `TPL_APPLICATION TPL_CALLBACK TPL_NOTIFY`.
+
+The functions are listed below: 
+![Table 7.1: Event, Timer, and Task Priority Functions](https://github.com/user-attachments/assets/e7f2e123-64e2-476f-bc7a-f54d37730145)
 
 
-### Global Boot Service Interfaces
+### Memory Allocation Services
 
-### Device Handle-based Boot Service interfaces
+### Protocol Handler Services
 
-### Device Protocols
+### Image Services
 
-### Protocol Services
+### Miscellaneous Boot Services
 
 ### Conclusion
+As mentioned at the start of the section, the UEFI OS Loader must at minimum, have the current memory map by calling `EFI_BOOT_SERVICES.GetMemoryMap()`, before terminating boot services.
 
 ## Runtime Services
 According to the UEFI Spec[^1] the primary purpose of the runtime services is to abstract minor parts of the hardware implementation of the platform from the OS. All of these interfaces are non-blocking and can be called with interrupts disabled if desired. <br/> 
@@ -71,4 +84,5 @@ Memory used by runtime services must be reserved and not used by the OS. Also, t
 There are a few key runtime services, but there are not many of them so basically everything the OS needs has to be provided by the OS Loader / Kernel. <br/>
 A few notable functions include `SetVirtualAddressMap` which switches runtime functions from physical to virtual addressing, as well as `ConvertPointer()` which converts a pointer between the two. The variable functions seem to be linked to the EFI variable store, so may not be used much outside of EFI functions. The other notable functions are the 4 time related functions `GetTime() SetTime() GetWakeupTime() SetWakeupTime()`.
 
-[^1]: https://uefi.org/sites/default/files/resources/UEFI_Spec_Final_2.11.pdf
+[^1]: https://uefi.org/sites/default/files/resources/UEFI_Spec_Final_2.11.pdf  
+If looking for a specific image in the document, the caption will mention the section number to visit in the contents page (eg. 7.1 => 7. Services - Boot Services ==> .1 Event, Timer and Task Priority Services)
