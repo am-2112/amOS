@@ -115,6 +115,8 @@ The watchdog timer is only used during boot services, and if it expires then the
 As mentioned at the start of the section, the UEFI OS Loader must at minimum, have the current memory map by calling `EFI_BOOT_SERVICES.GetMemoryMap()`, before terminating boot services. <br/>
 We may also want to periodically refresh the watchdog timer so that it does not expire (unless the system hangs, in which case the watchdog timer will help reset the system).
 
+During preboot, we have to access all physical devices via Boot Services device handles until `EFI_BOOT_SERVICES.ExitBootServices()` is successfully called. At which point, we have to make use of Device Paths and the EFI Device Path Protocol to access these devices. It is implied that other protocols such as the aforementioned, as well as Console Support and 
+
 
 ## Runtime Services
 According to the UEFI Spec[^1] the primary purpose of the runtime services is to abstract minor parts of the hardware implementation of the platform from the OS. All of these interfaces are non-blocking and can be called with interrupts disabled if desired. <br/> 
