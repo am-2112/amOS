@@ -104,10 +104,17 @@ The functions are listed below:
 
 
 ### Miscellaneous Boot Services
+These are a list of a few remaining function definitions for boot services not defined elsewhere:
 
+![Table 7.37: Miscellaneous Boot Services Functions @ pg. 204 - 205](https://github.com/user-attachments/assets/c9dec4ab-b853-4a3b-bd52-546d19582f9f)
+
+The `EFI_BOOT_SERVICES.CalculateCrc32()` function can be used to compute new 32-bit CRCs as well as validate existing 32-bit CRCs. These are used in several places in EFI such as the EFI System Table, EFI Boot Services Table, EFI Runtime Services Table, and GUID Partition Table (GPT) structures. <br/>
+The watchdog timer is only used during boot services, and if it expires then the system may either reset with `ResetSystem()` or perform a platform specific action that must eventually cause the platform to be reset. It must be set to a period of 5 minutes, and is only used during boot services **however** the EFI Image may reset or disable the watchdog timer as needed using `EFI_BOOT_SERVICES.SetWatchdogTimer()`.
 
 ### Conclusion
-As mentioned at the start of the section, the UEFI OS Loader must at minimum, have the current memory map by calling `EFI_BOOT_SERVICES.GetMemoryMap()`, before terminating boot services.
+As mentioned at the start of the section, the UEFI OS Loader must at minimum, have the current memory map by calling `EFI_BOOT_SERVICES.GetMemoryMap()`, before terminating boot services. <br/>
+We may also want to periodically refresh the watchdog timer so that it does not expire (unless the system hangs, in which case the watchdog timer will help reset the system).
+
 
 ## Runtime Services
 According to the UEFI Spec[^1] the primary purpose of the runtime services is to abstract minor parts of the hardware implementation of the platform from the OS. All of these interfaces are non-blocking and can be called with interrupts disabled if desired. <br/> 
