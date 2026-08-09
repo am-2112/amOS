@@ -66,6 +66,10 @@ Importantly for us, an executing EFI image must **only** use the memory **it** h
 
 It is the caller's responsibility to free memory allocated by a service. Unless stated otherwise, the UEFI spec assumes that these memory buffers are allocated with `AllocatePool()` and freed with `FreePool()`.
 
+The functions are listed below:
+![Table 7.8: Memory Allocation Functions](https://github.com/user-attachments/assets/a14c2143-f8fe-4bf9-b33b-487c0af5d6fc)
+
+
 ### Protocol Handler Services
 
 ### Image Services
