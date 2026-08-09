@@ -86,6 +86,19 @@ The functions are listed below:
 
 
 ### Image Services
+This handles loading UEFI Applications, UEFI Boot Services Drivers, and EFI Runtime Drivers. A UEFI OS Loader is a type of UEFI Application. 
+
+Boot Service Drivers service memory and stays resident until boot services terminate, whereas runtime drivers stay loaded and resident during runtime (whose memory must be allocated in a single allocation). <br/>
+UEFI applications should not install any protocol interfaces or handles, and are loaded in sequential order by the boot manager (and only **one** UEFI application may dynamically load another).
+
+UEFI applications can load another with `EFI_BOOT_SERVICES.LoadImage()` and `EFI_BOOT_SERVICES.StartImage()`. It seems that by using the SourceBuffer param, images can be loaded directly from memory (rather than from disk, if using DevicePath param). `StartImage()` directly transfers control to the newly loaded UEFI application until it finishes executing.
+
+The functions are listed below:
+
+![Table 7.31: Image Functions @ pg. 197](https://github.com/user-attachments/assets/c7dd0b77-342d-4b5c-8549-ffaca7065193)
+
+`EFI_BOOT_SERVICES.ExitBootService` is particularly noteworthy. This function is called to terminate all boot services. The UEFI OS Loader must ensure it has the system's current memory map by the time it does this by calling `EFI_BOOT_SERVICES.GetMemoryMap()`. The OS Loader can still call to Memory Allocation Services after the first call to this service. Afterwards, the UEFI OS Loader owns all **available** memory in the system, including any memory marked as `EfiBootServicesCode` and `EfiBootServicesData` (but not anything used by the runtime services).
+
 
 ### Miscellaneous Boot Services
 
