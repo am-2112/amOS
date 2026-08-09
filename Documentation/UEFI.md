@@ -71,6 +71,14 @@ The functions are listed below:
 
 
 ### Protocol Handler Services
+These allow applications to install a protocol on a device handle, identify handles that support given protocols, determine if handles support given protocols, and so forth. <br/>
+The firmware is responsible for maintaining a database showing which protocols are attached to each device handle. This is built dynamically by calling `EFI_BOOT_SERVICES.InstallProtocolInterface()`. Protocols do not have to be added to existing device handles, but also added to create a new device handle. This function is only available to UEFI drivers or firmware itself, and each attached protocol is represented as a GUID/Interface pointer pair (where the GUID is the name of the protocol, and the interface points to a protocol instance). Each protocol handler is logically a UEFI driver.
+
+Access to devices is initiated by calling `EFI_BOOT_SERVICES.HandleProtocol()` which determines if a handle supports a given protocol. If so, a pointer to the matching Protocol Interface structure is returned. <br/>
+Agents (eg. the UEFI OS Loader) calling this function are not tracked, so it is not safe to uninstall or reinstall protocol interfaces. As such, it is ideal to instead use `EFI_BOOT_SERVICES.OpenProtocol()` and `EFI_BOOT_SERVICES.CloseProtocol()` and likewise named functions. These adds and removes elements from a list of agents consuming a protocol interface. <br/>
+Another useful function may be `EFI_BOOT_SERVICES.LocateProtocol()` which searches the handle database for the first protocol instance that matches the search criteria (which can then be consumed to access devices).
+
+Most other functions in this grouping are used by development and implementation of drivers and firmware, not for use by the UEFI OS Loader.
 
 ### Image Services
 
