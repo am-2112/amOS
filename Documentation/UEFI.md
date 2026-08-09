@@ -69,6 +69,9 @@ It is the caller's responsibility to free memory allocated by a service. Unless 
 The functions are listed below:
 ![Table 7.8: Memory Allocation Functions](https://github.com/user-attachments/assets/a14c2143-f8fe-4bf9-b33b-487c0af5d6fc)
 
+Calling `GetMemoryMap()` is mandatory before terminating boot services. This returns a copy of the current memory map, which is an array of memory descriptors - each of which describing a contiguous block of memory. The map describes **all** memory, regardless of how it is being used. It includes blocks allocated by `AllocatePages()` and `AllocatePool()` as well as blocks being used by firmware for its own purpose. <br/>
+Any address regions **not** backed by physical hardware does not return a range description, and any memory not supposed to be accessed by the OS is returned as `EfiReservedMemoryType`. All other memory can be used at our own discretion.
+
 
 ### Protocol Handler Services
 These allow applications to install a protocol on a device handle, identify handles that support given protocols, determine if handles support given protocols, and so forth. <br/>
@@ -101,6 +104,7 @@ The functions are listed below:
 
 
 ### Miscellaneous Boot Services
+
 
 ### Conclusion
 As mentioned at the start of the section, the UEFI OS Loader must at minimum, have the current memory map by calling `EFI_BOOT_SERVICES.GetMemoryMap()`, before terminating boot services.
