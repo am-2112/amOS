@@ -80,6 +80,11 @@ Another useful function may be `EFI_BOOT_SERVICES.LocateProtocol()` which search
 
 Most other functions in this grouping are used by development and implementation of drivers and firmware, not for use by the UEFI OS Loader.
 
+The functions are listed below:
+
+![Table 7.14: Protocol Interface Functions @ pg.162-163](https://github.com/user-attachments/assets/491df293-cb5e-4f36-b531-d2c064a022d1)
+
+
 ### Image Services
 
 ### Miscellaneous Boot Services
@@ -101,4 +106,4 @@ There are a few key runtime services, but there are not many of them so basicall
 A few notable functions include `SetVirtualAddressMap` which switches runtime functions from physical to virtual addressing, as well as `ConvertPointer()` which converts a pointer between the two. The variable functions seem to be linked to the EFI variable store, so may not be used much outside of EFI functions. The other notable functions are the 4 time related functions `GetTime() SetTime() GetWakeupTime() SetWakeupTime()`.
 
 [^1]: https://uefi.org/sites/default/files/resources/UEFI_Spec_Final_2.11.pdf  
-If looking for a specific image in the document, the caption will mention the section number to visit in the contents page (eg. 7.1 => 7. Services - Boot Services ==> .1 Event, Timer and Task Priority Services)
+If looking for a specific image in the document, the caption will mention the section number to visit in the contents page (eg. 7.1 => 7. Services - Boot Services ==> .1 Event, Timer and Task Priority Services) or will directly include the page number(s) the image comes from
