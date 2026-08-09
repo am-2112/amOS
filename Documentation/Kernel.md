@@ -36,6 +36,7 @@ There are a few things needed in a successful implementation of a kernel. The ke
   - A command line in my case (libOSes can provide gui abstractions)
 * Security and protection of programs
 
+### [next](UEFI.md)
 
 [^1]: https://wiki.osdev.org/Kernal
 [^2]: https://wiki.osdev.org/Exokernel
