@@ -61,6 +61,10 @@ The functions are listed below:
 
 
 ### Memory Allocation Services
+These functions are used during preboot to allocate and free memory, and to obtain the system's memory map. <br/>
+Importantly for us, an executing EFI image must **only** use the memory **it** has allocated. Also, if an executing EFI image exits and returns control to firmware, it must free all resources it has **explicitly allocated** - including all memory pages, pool allocations, open file handles etc. (this excludes memory allocated by firmware to load an image).
+
+It is the caller's responsibility to free memory allocated by a service. Unless stated otherwise, the UEFI spec assumes that these memory buffers are allocated with `AllocatePool()` and freed with `FreePool()`.
 
 ### Protocol Handler Services
 
