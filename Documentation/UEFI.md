@@ -50,7 +50,7 @@ The EFI System Table contains pointers to the runtime and boot services tables (
 So while Boot or Runtime Services are being used by anything, the EFI System Table and the corresponding tables for Boot and Runtime Services should not be overwritten
 
 ## Boot Services
-All of the services mentioned below are only available *before* a successful call to `EFI_BOOT_SERVICES.ExitBootService`. This function is called to terminate all boot services. The UEFI OS Loader must ensure it has the system's current memory map by the time it does this by calling `EFI_BOOT_SERVICES.GetMemoryMap()`. The OS Loader can still call to Memory Allocation Services after the first call to this service. Afterwards, the UEFI OS Loader owns all **available** memory in the system, including any memory marked as `EfiBootServicesCode` and `EfiBootServicesData`.
+All of the services mentioned below are only available *before* a successful call to `EFI_BOOT_SERVICES.ExitBootService()`. This function is called to terminate all boot services. The UEFI OS Loader must ensure it has the system's current memory map by the time it does this by calling `EFI_BOOT_SERVICES.GetMemoryMap()`. The OS Loader can still call to Memory Allocation Services after the first call to this service. Afterwards, the UEFI OS Loader owns all **available** memory in the system, including any memory marked as `EfiBootServicesCode` and `EfiBootServicesData`.
 
 ### Event, Timer and Task Priority Services
 These functions are used during preboot to create, close, signal, and wait for events; to set timers; and to raise and restore task priority levels. <br/>
@@ -129,7 +129,13 @@ Memory used by runtime services must be reserved and not used by the OS. Also, t
 
 ### Conclusion
 There are a few key runtime services, but there are not many of them so basically everything the OS needs has to be provided by the OS Loader / Kernel. <br/>
-A few notable functions include `SetVirtualAddressMap` which switches runtime functions from physical to virtual addressing, as well as `ConvertPointer()` which converts a pointer between the two. The variable functions seem to be linked to the EFI variable store, so may not be used much outside of EFI functions. The other notable functions are the 4 time related functions `GetTime() SetTime() GetWakeupTime() SetWakeupTime()`.
+A few notable functions include `SetVirtualAddressMap` which switches runtime functions from physical to virtual addressing, as well as `ConvertPointer()` which converts a pointer between the two. The variable functions seem to be linked to the EFI variable store (env). The other notable functions are the 4 time related functions `GetTime() SetTime() GetWakeupTime() SetWakeupTime()`.
+
+## What does my UEFI OS Loader need to do?
+Before working on a kernel, I will need to create a UEFI OS Loader (bootloader) at `/efi/boot/BOOTX64.efi`. The bootloader needs to load the kernel into memory and give it a desirable environment. <br/>
+This will require fetching ACPI tables and getting information about connected devices in the system. I will also need to call `EFI_BOOT_SERVICES.GetMemoryMap()` to get a memory map and then `EFI_BOOT_SERVICES.ExitBootService()`.
 
 [^1]: https://uefi.org/sites/default/files/resources/UEFI_Spec_Final_2.11.pdf  
 If looking for a specific image in the document, the caption will mention the section number to visit in the contents page (eg. 7.1 => 7. Services - Boot Services ==> .1 Event, Timer and Task Priority Services) or will directly include the page number(s) the image comes from
+
+[^2}: https://wiki.osdev.org/Rolling_Your_Own_Bootloader
