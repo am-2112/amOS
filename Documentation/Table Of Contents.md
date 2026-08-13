@@ -10,4 +10,5 @@
 [*EFI System Table*](UEFI.md#efi-system-table) <br/>
 [*Boot Services*](UEFI.md#boot-services) <br/>
 [*Runtime Services*](UEFI.md#runtime-services) <br/>
-[*What does my UEFI OS Loader need to do?*](UEFI.md#what-does-my-uefi-os-loader-need-to-do) <br/>
+[*What does my UEFI OS Loader need to do?*](UEFI.md#what-does-my-uefi-os-loader-need-to-do)
+## 3. [Device Management](Device-Management.md)
