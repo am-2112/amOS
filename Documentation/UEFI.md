@@ -135,6 +135,8 @@ A few notable functions include `SetVirtualAddressMap` which switches runtime fu
 Before working on a kernel, I will need to create a UEFI OS Loader (bootloader) at `/efi/boot/BOOTX64.efi`. The bootloader needs to load the kernel into memory and give it a desirable environment[^2]. <br/>
 This will require fetching ACPI tables and getting information about connected devices in the system. I will also need to call `EFI_BOOT_SERVICES.GetMemoryMap()` to get a memory map and then `EFI_BOOT_SERVICES.ExitBootService()`.
 
+### [next](Device-Management.md)
+
 [^1]: https://uefi.org/sites/default/files/resources/UEFI_Spec_Final_2.11.pdf  
 If looking for a specific image in the document, the caption will mention the section number to visit in the contents page (eg. 7.1 => 7. Services - Boot Services ==> .1 Event, Timer and Task Priority Services) or will directly include the page number(s) the image comes from
 
